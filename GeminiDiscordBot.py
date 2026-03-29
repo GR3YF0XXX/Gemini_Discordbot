@@ -1,3 +1,16 @@
+import http.server
+import socketserver
+import threading
+import os
+
+def run_on_render():
+    port = int(os.environ.get("PORT", 10000))
+    handler = http.server.SimpleHTTPRequestHandler
+    with socketserver.TCPServer(("", port), handler) as httpd:
+        httpd.serve_forever()
+
+threading.Thread(target=run_on_render, daemon=True).start()
+
 import discord
 import google.generativeai as genai
 from discord.ext import commands
