@@ -6,10 +6,19 @@ import os
 def run_on_render():
     port = int(os.environ.get("PORT", 10000))
     handler = http.server.SimpleHTTPRequestHandler
-    with socketserver.TCPServer(("", port), handler) as httpd:
-        httpd.serve_forever()
+    try:
+        with socketserver.TCPServer(("", port), handler) as httpd:
+            print(f"Keeping Render alive on port {port}")
+            httpd.serve_forever()
+    except Exception as e:
+        print(f"Server error: {e}")
 
 threading.Thread(target=run_on_render, daemon=True).start()
+
+# --- Your original code starts here ---
+import discord
+import google.generativeai as genai
+# ... keep all your other imports and code below this ...
 
 import discord
 import google.generativeai as genai
