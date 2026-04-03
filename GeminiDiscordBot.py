@@ -137,7 +137,7 @@ Restriction: Only reference content listed in Protocol 1.
 
 # 4. FINALLY, initialize the model using everything defined above
 gemini_model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash-latest", 
+    model_name="gemini-1.5-flash", 
     generation_config=text_generation_config, 
     safety_settings=safety_settings,
     system_instruction=gemini_system_prompt
