@@ -17,22 +17,22 @@ from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api._errors import TranscriptsDisabled
 import urllib.parse as urlparse
 
-# --- 1. Load Environment & Configure AI ---
-# This section MUST come before calling genai functions to avoid NameError
+# --- 1. ENVIRONMENT & AI CONFIGURATION ---
+# We load these first to ensure 'genai' is configured before any calls are made.
 load_dotenv()
 GOOGLE_AI_KEY = os.getenv("GOOGLE_AI_KEY")
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 
-# Ensure MAX_HISTORY is a valid integer
+# Ensure MAX_HISTORY is an integer
 raw_history = os.getenv("MAX_HISTORY")
 MAX_HISTORY = int(raw_history) if raw_history and raw_history.isdigit() else 10
 
 if GOOGLE_AI_KEY:
     genai.configure(api_key=GOOGLE_AI_KEY)
 else:
-    print("❌ ERROR: GOOGLE_AI_KEY not found. Check your environment variables.")
+    print("❌ ERROR: GOOGLE_AI_KEY not found in environment variables.")
 
-# --- 2. Render Keep-Alive ---
+# --- 2. RENDER KEEP-ALIVE ---
 def run_on_render():
     port = int(os.environ.get("PORT", 10000))
     handler = http.server.SimpleHTTPRequestHandler
@@ -45,7 +45,7 @@ def run_on_render():
 
 threading.Thread(target=run_on_render, daemon=True).start()
 
-# --- 3. AI Configuration & Prompts ---
+# --- 3. AI SYSTEM PROMPT & MODEL ---
 SUMMERIZE_PROMPT = "Give me 5 bullets about"
 message_history = {}
 
@@ -56,13 +56,7 @@ text_generation_config = {
     "max_output_tokens": 4096,
 }
 
-safety_settings = [
-    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_ONLY_HIGH"},
-    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_ONLY_HIGH"},
-    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_ONLY_HIGH"},
-    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_ONLY_HIGH"}
-]
-
+# The system prompt defines your specific Star Wars GM persona and rules.
 gemini_system_prompt = """
 [Protocol 1: Source Material]
 Instructions: You are an expert Game Master for the Star Wars RPG tabletop roleplaying game from Fantasy Flight and Edge Studios. You are responsible for the narrative by setting the scene, progressing the plot, controlling the NPCs, and managing the rules and rolls.
@@ -91,15 +85,14 @@ Scenes must have purpose and conflict. Maintain a running tally of player invent
 Step-Gate: Process ONE category at a time (Species -> Career -> etc.). Wait for player response before moving to the next step.
 """
 
-# Using 'gemini-1.5-flash-latest' often fixes 404s related to system_instructions
+# We use 'gemini-1.5-flash' to ensure compatibility with system_instruction.
 gemini_model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash-latest", 
-    generation_config=text_generation_config, 
-    safety_settings=safety_settings,
+    model_name="gemini-1.5-flash", 
+    generation_config=text_generation_config,
     system_instruction=gemini_system_prompt
 )
 
-# --- 4. Discord Bot Logic ---
+# --- 4. DISCORD BOT CODE ---
 defaultIntents = discord.Intents.default()
 defaultIntents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=defaultIntents)
@@ -120,6 +113,7 @@ async def process_message(message):
     if bot.user.mentioned_in(message) or isinstance(message.channel, discord.DMChannel):
         cleaned_text = clean_discord_message(message.content)
         async with message.channel.typing():
+            # Handle Image Attachments
             if message.attachments:
                 for attachment in message.attachments:
                     if any(attachment.filename.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.webp']):
@@ -134,8 +128,11 @@ async def process_message(message):
                                 await split_and_send_messages(message, response_text, 1700)
                                 return
                     else:
+                        # Handle non-image attachments (PDFs/Text)
                         await ProcessAttachments(message, cleaned_text)
                         return
+            
+            # Handle Text Commands and History
             else:
                 if "RESET" in cleaned_text.upper() or "CLEAN" in cleaned_text.upper():
                     if message.author.id in message_history:
@@ -160,14 +157,14 @@ async def process_message(message):
                 update_message_history(message.author.id, response_text)
                 await split_and_send_messages(message, response_text, 1700)
 
-# --- 5. AI Generation Functions ---
+# --- 5. AI GENERATION FUNCTIONS ---
 
 async def generate_response_with_text(message_text):
     try:
         response = gemini_model.generate_content(message_text)
         return response.text
     except Exception as e:
-        return f"❌ Exception: {str(e)}"
+        return "❌ Exception: " + str(e)
 
 async def generate_response_with_image_and_text(image_data, text):
     try:
@@ -176,9 +173,9 @@ async def generate_response_with_image_and_text(image_data, text):
         response = gemini_model.generate_content(prompt_parts)
         return response.text
     except Exception as e:
-        return f"❌ Exception: {str(e)}"
+        return "❌ Exception: " + str(e)
 
-# --- 6. Helper & Utility Functions ---
+# --- 6. UTILITY FUNCTIONS ---
 
 def update_message_history(user_id, text):
     if user_id in message_history:
@@ -207,9 +204,9 @@ async def ProcessURL(message_str):
     if pre_prompt == "":
         pre_prompt = SUMMERIZE_PROMPT   
     if is_youtube_url(url):
-        return await generate_response_with_text(f"{pre_prompt} {get_FromVideoID(get_video_id(url))}")     
+        return await generate_response_with_text(pre_prompt + " " + get_FromVideoID(get_video_id(url)))     
     if url:       
-        return await generate_response_with_text(f"{pre_prompt} {extract_text_from_url(url)}")
+        return await generate_response_with_text(pre_prompt + " " + extract_text_from_url(url))
     return "No URL Found"
 
 def extract_url(string):
@@ -260,16 +257,16 @@ async def ProcessAttachments(message, prompt):
                     response_text = await process_pdf(pdf_data, prompt)
                 else:
                     text_data = await resp.text()
-                    response_text = await generate_response_with_text(f"{prompt}: {text_data}")
+                    response_text = await generate_response_with_text(prompt + ": " + text_data)
                 await split_and_send_messages(message, response_text, 1700)
 
 async def process_pdf(pdf_data, prompt):
     doc = fitz.open(stream=pdf_data, filetype="pdf")
     text = "".join([page.get_text() for page in doc])
     doc.close()
-    return await generate_response_with_text(f"{prompt}: {text}")
+    return await generate_response_with_text(prompt + ": " + text)
 
-# --- 7. Run Bot ---
+# --- 7. RUN BOT ---
 if DISCORD_BOT_TOKEN:
     bot.run(DISCORD_BOT_TOKEN)
 else:
