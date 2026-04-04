@@ -19,10 +19,13 @@ from youtube_transcript_api._errors import TranscriptsDisabled
 import urllib.parse as urlparse
 
 # --- Render Keep-Alive Server ---
+# This ensures Render doesn't shut down your bot for inactivity on the Free tier.
 def run_on_render():
     port = int(os.environ.get("PORT", 10000))
     handler = http.server.SimpleHTTPRequestHandler
     try:
+        # Use allow_reuse_address to prevent [Errno 98] Address already in use
+        socketserver.TCPServer.allow_reuse_address = True
         with socketserver.TCPServer(("", port), handler) as httpd:
             print(f"Keeping Render alive on port {port}")
             httpd.serve_forever()
@@ -120,7 +123,7 @@ gemini_config = types.GenerateContentConfig(
     ]
 )
 
-# --- AI Generation Functions ---
+# --- AI Generation Functions (Updated for google-genai) ---
 async def generate_response_with_text(message_text):
     try:
         response = client.models.generate_content(
@@ -158,6 +161,7 @@ async def on_ready():
 
 @bot.event
 async def on_message(message):
+    # This prevents blocking the main thread for long AI generations
     asyncio.create_task(process_message(message))
 
 async def process_message(message):
@@ -167,6 +171,7 @@ async def process_message(message):
     if bot.user.mentioned_in(message) or isinstance(message.channel, discord.DMChannel):
         cleaned_text = clean_discord_message(message.content)
         async with message.channel.typing():
+            # Handle Image Attachments
             if message.attachments:
                 for attachment in message.attachments:
                     if any(attachment.filename.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.webp']):
@@ -181,8 +186,11 @@ async def process_message(message):
                                 await split_and_send_messages(message, response_text, 1700)
                                 return
                     else:
+                        # Handle non-image attachments (PDFs/Text)
                         await ProcessAttachments(message, cleaned_text)
                         return
+            
+            # Handle Text-only messages
             else:
                 if "RESET" in cleaned_text or "CLEAN" in cleaned_text:
                     if message.author.id in message_history:
@@ -190,12 +198,14 @@ async def process_message(message):
                     await message.channel.send(f"🧼 History Reset for {message.author.name}")
                     return
 
+                # Check for URLs in message
                 if extract_url(cleaned_text):
                     await message.add_reaction('🔗')
                     response_text = await ProcessURL(cleaned_text)
                     await split_and_send_messages(message, response_text, 1700)
                     return
 
+                # Normal Chat with History
                 await message.add_reaction('💬')
                 update_message_history(message.author.id, cleaned_text)
                 response_text = await generate_response_with_text(get_formatted_message_history(message.author.id))
@@ -218,7 +228,8 @@ async def split_and_send_messages(message_system, text, max_length):
         await message_system.channel.send(text[i:i+max_length])
 
 def clean_discord_message(input_string):
-    return re.sub(r'<[^>]+>', '', input_string)
+    # Removes the <@ID> tags from the prompt
+    return re.sub(r'<[^>]+>', '', input_string).strip()
 
 async def ProcessURL(message_str):
     url = extract_url(message_str)
@@ -239,9 +250,10 @@ def extract_text_from_url(url):
     try:
         response = requests.get(url, headers=headers)
         soup = BeautifulSoup(response.text, 'html.parser')
+        # Extracts text from all paragraph tags
         return ' '.join([p.text for p in soup.find_all('p')])
     except:
-        return "Failed to scrape URL."
+        return "Failed to scrape text from the provided URL."
 
 # --- Youtube & PDF Logic ---
 def get_video_id(url):
@@ -258,7 +270,7 @@ def get_FromVideoID(video_id):
         transcript = YouTubeTranscriptApi.get_transcript(video_id)
         return ' '.join([i['text'] for i in transcript])
     except:
-        return "Transcript unavailable."
+        return "Transcript unavailable for this YouTube video."
 
 async def ProcessAttachments(message, prompt):
     prompt = prompt or SUMMERIZE_PROMPT
@@ -268,12 +280,16 @@ async def ProcessAttachments(message, prompt):
             async with session.get(attachment.url) as resp:
                 if attachment.filename.lower().endswith('.pdf'):
                     data = await resp.read()
+                    # Open PDF from bytes
                     doc = fitz.open(stream=data, filetype="pdf")
                     text = "".join([page.get_text() for page in doc])
+                    doc.close()
                     response_text = await generate_response_with_text(f"{prompt}: {text}")
                 else:
+                    # Handle as text file
                     text = await resp.text()
                     response_text = await generate_response_with_text(f"{prompt}: {text}")
                 await split_and_send_messages(message, response_text, 1700)
 
+# Start the bot
 bot.run(DISCORD_BOT_TOKEN)
