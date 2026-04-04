@@ -17,7 +17,8 @@ threading.Thread(target=run_on_render, daemon=True).start()
 
 # --- Your original code starts here ---
 import discord
-import google.generativeai as genai
+from google import genai       # New Library
+from google.genai import types # New Library
 from discord.ext import commands
 from pathlib import Path
 import aiohttp
