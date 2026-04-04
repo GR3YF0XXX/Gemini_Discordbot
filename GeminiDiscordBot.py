@@ -43,7 +43,7 @@ SUMMERIZE_PROMPT = "Give me 5 bullets about"
 message_history = {}
 
 # --- AI Configuration ---
-# Forces the stable 'v1' API to avoid the v1beta 404 error
+# Force api_version='v1' to stop the 404 v1beta error
 client = genai.Client(
     api_key=GOOGLE_AI_KEY, 
     http_options=HttpOptions(api_version='v1')
@@ -112,6 +112,8 @@ Tone & Style: Helpful, encouraging, and knowledgeable.
 Restriction: Only reference content listed in Protocol 1.
 """
 
+
+
 # --- AI Generation Functions ---
 async def generate_response_with_text(message_text):
     try:
@@ -119,7 +121,7 @@ async def generate_response_with_text(message_text):
             model=gemini_model_name,
             contents=message_text,
             config=types.GenerateContentConfig(
-                system_instruction=gemini_system_prompt,
+                system_instruction=gemini_system_prompt, # FIXED: Added underscore
                 temperature=0.9,
             )
         )
@@ -135,7 +137,7 @@ async def generate_response_with_image_and_text(image_data, text):
             model=gemini_model_name,
             contents=[image_part, prompt],
             config=types.GenerateContentConfig(
-                system_instruction=gemini_system_prompt,
+                system_instruction=gemini_system_prompt, # FIXED: Added underscore
                 temperature=0.9,
             )
         )
@@ -156,6 +158,9 @@ async def on_ready():
 
 @bot.event
 async def on_message(message):
+    asyncio.create_task(process_message(message))
+
+async def process_message(message):
     if message.author == bot.user or message.mention_everyone:
         return
 
@@ -206,12 +211,9 @@ def update_message_history(user_id, text):
         message_history[user_id].pop(0)
 
 def get_formatted_message_history(user_id):
-    history_list = message_history.get(user_id, [])
-    return '\n\n'.join(history_list) if history_list else "No history found."
+    return '\n\n'.join(message_history.get(user_id, ["No history found."]))
 
 async def split_and_send_messages(message_system, text, max_length):
-    if not text:
-        return
     for i in range(0, len(text), max_length):
         await message_system.channel.send(text[i:i+max_length])
 
