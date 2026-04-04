@@ -47,7 +47,7 @@ message_history = {}
 
 # This forces the client to use the stable v1 API instead of defaulting to v1beta
 client = genai.Client(api_key=GOOGLE_AI_KEY, http_options={'api_version': 'v1'})
-gemini_model_name = "gemini-1.5-flash"
+gemini_model_name = "gemini-1.5-flash-002"
 
 gemini_system_prompt = """
 [Protocol 1: Source Material]
