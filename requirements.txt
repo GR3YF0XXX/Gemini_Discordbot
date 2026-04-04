@@ -1,7 +1,9 @@
-google-genai
-discord.py
-python-dotenv
 aiohttp
-PyMuPDF
+discord.py
+google-generativeai
+python-dotenv
 youtube-transcript-api
+PyMuPDF
+requests
 beautifulsoup4
+audioop-lts
