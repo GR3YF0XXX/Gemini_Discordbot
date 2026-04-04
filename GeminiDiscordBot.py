@@ -404,7 +404,6 @@ async def process_pdf(pdf_data,prompt):
 
 #---------------------------------------------Run Bot-------------------------------------------------
 bot.run(DISCORD_BOT_TOKEN)
-~
 
 
 
