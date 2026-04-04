@@ -43,7 +43,6 @@ SUMMERIZE_PROMPT = "Give me 5 bullets about"
 message_history = {}
 
 # --- AI Configuration ---
-# Forces the stable 'v1' API to avoid the v1beta 404 error
 client = genai.Client(
     api_key=GOOGLE_AI_KEY, 
     http_options=HttpOptions(api_version='v1')
@@ -119,7 +118,7 @@ async def generate_response_with_text(message_text):
             model=gemini_model_name,
             contents=message_text,
             config=types.GenerateContentConfig(
-                system_instruction=gemini_system_prompt, # FIXED: Uses underscore
+                system_instruction=gemini_system_prompt,
                 temperature=0.9,
             )
         )
@@ -135,7 +134,7 @@ async def generate_response_with_image_and_text(image_data, text):
             model=gemini_model_name,
             contents=[image_part, prompt],
             config=types.GenerateContentConfig(
-                system_instruction=gemini_system_prompt, # FIXED: Uses underscore
+                system_instruction=gemini_system_prompt,
                 temperature=0.9,
             )
         )
@@ -255,4 +254,26 @@ def is_youtube_url(url):
 
 def get_FromVideoID(video_id):
     try:
-        transcript =
+        transcript = YouTubeTranscriptApi.get_transcript(video_id)
+        return ' '.join([i['text'] for i in transcript])
+    except:
+        return "Transcript unavailable for this YouTube video."
+
+async def ProcessAttachments(message, prompt):
+    prompt = prompt or SUMMERIZE_PROMPT
+    for attachment in message.attachments:
+        await message.add_reaction('📄')
+        async with aiohttp.ClientSession() as session:
+            async with session.get(attachment.url) as resp:
+                if attachment.filename.lower().endswith('.pdf'):
+                    data = await resp.read()
+                    doc = fitz.open(stream=data, filetype="pdf")
+                    text = "".join([page.get_text() for page in doc])
+                    doc.close()
+                    response_text = await generate_response_with_text(f"{prompt}: {text}")
+                else:
+                    text = await resp.text()
+                    response_text = await generate_response_with_text(f"{prompt}: {text}")
+                await split_and_send_messages(message, response_text, 1700)
+
+bot.run(DISCORD_BOT_TOKEN)
