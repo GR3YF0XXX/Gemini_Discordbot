@@ -1,9 +1,8 @@
-aiohttp
 discord.py
 google-generativeai
 python-dotenv
-youtube-transcript-api
+aiohttp
 PyMuPDF
 requests
 beautifulsoup4
-audioop-lts
+youtube-transcript-api
