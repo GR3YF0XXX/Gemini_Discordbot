@@ -44,11 +44,16 @@ SUMMERIZE_PROMPT = "Give me 5 bullets about"
 message_history = {}
 
 # --- AI Configuration ---
+from google.genai.types import HttpOptions
 
-# --- AI Configuration ---
-client = genai.Client(api_key=GOOGLE_AI_KEY)
-# Use the stable versioned name to avoid 404s
-gemini_model_name = "gemini-1.5-flash-002" 
+# We must use HttpOptions to force the 'v1' stable API version
+client = genai.Client(
+    api_key=GOOGLE_AI_KEY, 
+    http_options=HttpOptions(api_version='v1')
+)
+
+# Use the most stable specific version of the model
+gemini_model_name = "gemini-1.5-flash-002"
 
 gemini_system_prompt = """
 [Protocol 1: Source Material]
