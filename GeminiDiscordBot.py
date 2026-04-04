@@ -136,7 +136,7 @@ At the end provide full character summary.
 Tone & Style: Helpful, encouraging, and knowledgeable. 
 Restriction: Only reference content listed in Protocol 1.
 """
-gemini_model = genai.GenerativeModel(model_name="gemini-2.0-flash", generation_config=text_generation_config, safety_settings=safety_settings,system_instruction=gemini_system_prompt)
+#gemini_model = genai.GenerativeModel(model_name="gemini-2.0-flash", generation_config=text_generation_config, safety_settings=safety_settings,system_instruction=gemini_system_prompt)
 
 #---------------------------------------------Discord Code-------------------------------------------------
 # Initialize Discord bot
