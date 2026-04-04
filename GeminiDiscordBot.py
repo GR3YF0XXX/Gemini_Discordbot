@@ -44,7 +44,9 @@ SUMMERIZE_PROMPT = "Give me 5 bullets about"
 message_history = {}
 
 # --- AI Configuration ---
-client = genai.Client(api_key=GOOGLE_AI_KEY)
+
+# This forces the client to use the stable v1 API instead of defaulting to v1beta
+client = genai.Client(api_key=GOOGLE_AI_KEY, http_options={'api_version': 'v1'})
 gemini_model_name = "gemini-1.5-flash"
 
 gemini_system_prompt = """
