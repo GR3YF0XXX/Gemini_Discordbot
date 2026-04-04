@@ -3,8 +3,9 @@ import socketserver
 import threading
 import os
 import discord
-from google import genai       # Modern Library
-from google.genai import types # Modern Library
+from google import genai
+from google.genai import types
+from google.genai.types import HttpOptions # Required for forcing v1
 from discord.ext import commands
 from pathlib import Path
 import aiohttp
@@ -19,12 +20,10 @@ from youtube_transcript_api._errors import TranscriptsDisabled
 import urllib.parse as urlparse
 
 # --- Render Keep-Alive Server ---
-# This ensures Render doesn't shut down your bot for inactivity on the Free tier.
 def run_on_render():
     port = int(os.environ.get("PORT", 10000))
     handler = http.server.SimpleHTTPRequestHandler
     try:
-        # Use allow_reuse_address to prevent [Errno 98] Address already in use
         socketserver.TCPServer.allow_reuse_address = True
         with socketserver.TCPServer(("", port), handler) as httpd:
             print(f"Keeping Render alive on port {port}")
@@ -44,16 +43,12 @@ SUMMERIZE_PROMPT = "Give me 5 bullets about"
 message_history = {}
 
 # --- AI Configuration ---
-from google.genai.types import HttpOptions
-
-# We must use HttpOptions to force the 'v1' stable API version
+# Force api_version='v1' to stop the 404 v1beta error
 client = genai.Client(
     api_key=GOOGLE_AI_KEY, 
     http_options=HttpOptions(api_version='v1')
 )
-
-# Use the most stable specific version of the model
-gemini_model_name = "gemini-1.5-flash-002"
+gemini_model_name = "gemini-1.5-flash"
 
 gemini_system_prompt = """
 [Protocol 1: Source Material]
@@ -117,194 +112,8 @@ Tone & Style: Helpful, encouraging, and knowledgeable.
 Restriction: Only reference content listed in Protocol 1.
 """
 
-gemini_config = types.GenerateContentConfig(
-    temperature=0.9,
-    top_p=1,
-    top_k=1,
-    max_output_tokens=4096,
-    # FIX: Ensure this is "system_instruction" with an underscore
-    system_instruction=gemini_system_prompt, 
-    safety_settings=[
-        types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_ONLY_HIGH"),
-        types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_ONLY_HIGH"),
-        types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="BLOCK_ONLY_HIGH"),
-        types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_ONLY_HIGH")
-    ]
-)
-
 # --- AI Generation Functions ---
 async def generate_response_with_text(message_text):
     try:
-        response = client.models.generate_content(
-            model=gemini_model_name,
-            contents=message_text,
-            config=types.GenerateContentConfig(
-                system_instruction=gemini_system_prompt, # FIXED: uses underscore
-                temperature=0.9,
-            )
-        )
-        return response.text
-    except Exception as e:
-        return "❌ Exception: " + str(e)
-
-async def generate_response_with_image_and_text(image_data, text):
-    try:
-        image_part = types.Part.from_bytes(data=image_data, mime_type="image/jpeg")
-        prompt = text if text else "What is this a picture of?"
-        response = client.models.generate_content(
-            model=gemini_model_name,
-            contents=[image_part, prompt],
-            config=types.GenerateContentConfig(
-                system_instruction=gemini_system_prompt, # FIXED: uses underscore
-                temperature=0.9,
-            )
-        )
-        return response.text
-    except Exception as e:
-        return "❌ Exception: " + str(e)
-
-# --- Discord Bot Core ---
-defaultIntents = discord.Intents.default()
-defaultIntents.message_content = True
-bot = commands.Bot(command_prefix="!", intents=defaultIntents)
-
-@bot.event
-async def on_ready():
-    print("----------------------------------------")
-    print(f'Gemini Bot Logged in as {bot.user}')
-    print("----------------------------------------")
-
-@bot.event
-async def on_message(message):
-    # This prevents blocking the main thread for long AI generations
-    asyncio.create_task(process_message(message))
-
-async def process_message(message):
-    if message.author == bot.user or message.mention_everyone:
-        return
-
-    if bot.user.mentioned_in(message) or isinstance(message.channel, discord.DMChannel):
-        cleaned_text = clean_discord_message(message.content)
-        async with message.channel.typing():
-            # Handle Image Attachments
-            if message.attachments:
-                for attachment in message.attachments:
-                    if any(attachment.filename.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.webp']):
-                        await message.add_reaction('🎨')
-                        async with aiohttp.ClientSession() as session:
-                            async with session.get(attachment.url) as resp:
-                                if resp.status != 200:
-                                    await message.channel.send('Unable to download image.')
-                                    return
-                                image_data = await resp.read()
-                                response_text = await generate_response_with_image_and_text(image_data, cleaned_text)
-                                await split_and_send_messages(message, response_text, 1700)
-                                return
-                    else:
-                        # Handle non-image attachments (PDFs/Text)
-                        await ProcessAttachments(message, cleaned_text)
-                        return
-            
-            # Handle Text-only messages
-            else:
-                if "RESET" in cleaned_text or "CLEAN" in cleaned_text:
-                    if message.author.id in message_history:
-                        del message_history[message.author.id]
-                    await message.channel.send(f"🧼 History Reset for {message.author.name}")
-                    return
-
-                # Check for URLs in message
-                if extract_url(cleaned_text):
-                    await message.add_reaction('🔗')
-                    response_text = await ProcessURL(cleaned_text)
-                    await split_and_send_messages(message, response_text, 1700)
-                    return
-
-                # Normal Chat with History
-                await message.add_reaction('💬')
-                update_message_history(message.author.id, cleaned_text)
-                response_text = await generate_response_with_text(get_formatted_message_history(message.author.id))
-                update_message_history(message.author.id, response_text)
-                await split_and_send_messages(message, response_text, 1700)
-
-# --- Helper Functions ---
-def update_message_history(user_id, text):
-    if user_id not in message_history:
-        message_history[user_id] = []
-    message_history[user_id].append(text)
-    if len(message_history[user_id]) > MAX_HISTORY:
-        message_history[user_id].pop(0)
-
-def get_formatted_message_history(user_id):
-    return '\n\n'.join(message_history.get(user_id, ["No history found."]))
-
-async def split_and_send_messages(message_system, text, max_length):
-    for i in range(0, len(text), max_length):
-        await message_system.channel.send(text[i:i+max_length])
-
-def clean_discord_message(input_string):
-    # Removes the <@ID> tags from the prompt
-    return re.sub(r'<[^>]+>', '', input_string).strip()
-
-async def ProcessURL(message_str):
-    url = extract_url(message_str)
-    pre_prompt = remove_url(message_str) or SUMMERIZE_PROMPT
-    if is_youtube_url(url):
-        return await generate_response_with_text(f"{pre_prompt} {get_FromVideoID(get_video_id(url))}")
-    return await generate_response_with_text(f"{pre_prompt} {extract_text_from_url(url)}")
-
-def extract_url(string):
-    match = re.search(r'https?://\S+', string)
-    return match.group(0) if match else None
-
-def remove_url(text):
-    return re.sub(r"https?://\S+", "", text).strip()
-
-def extract_text_from_url(url):
-    headers = {"User-Agent": "Mozilla/5.0"}
-    try:
-        response = requests.get(url, headers=headers)
-        soup = BeautifulSoup(response.text, 'html.parser')
-        # Extracts text from all paragraph tags
-        return ' '.join([p.text for p in soup.find_all('p')])
-    except:
-        return "Failed to scrape text from the provided URL."
-
-# --- Youtube & PDF Logic ---
-def get_video_id(url):
-    parsed = urlparse.urlparse(url)
-    if "youtube.com" in parsed.netloc:
-        return urlparse.parse_qs(parsed.query).get('v', [None])[0]
-    return parsed.path[1:] if "youtu.be" in parsed.netloc else None
-
-def is_youtube_url(url):
-    return url and ("youtube.com" in url or "youtu.be" in url)
-
-def get_FromVideoID(video_id):
-    try:
-        transcript = YouTubeTranscriptApi.get_transcript(video_id)
-        return ' '.join([i['text'] for i in transcript])
-    except:
-        return "Transcript unavailable for this YouTube video."
-
-async def ProcessAttachments(message, prompt):
-    prompt = prompt or SUMMERIZE_PROMPT
-    for attachment in message.attachments:
-        await message.add_reaction('📄')
-        async with aiohttp.ClientSession() as session:
-            async with session.get(attachment.url) as resp:
-                if attachment.filename.lower().endswith('.pdf'):
-                    data = await resp.read()
-                    # Open PDF from bytes
-                    doc = fitz.open(stream=data, filetype="pdf")
-                    text = "".join([page.get_text() for page in doc])
-                    doc.close()
-                    response_text = await generate_response_with_text(f"{prompt}: {text}")
-                else:
-                    # Handle as text file
-                    text = await resp.text()
-                    response_text = await generate_response_with_text(f"{prompt}: {text}")
-                await split_and_send_messages(message, response_text, 1700)
-
-# Start the bot
-bot.run(DISCORD_BOT_TOKEN)
+        # FIXED: uses system_instruction with an underscore
+        response = client.models.generate_content
