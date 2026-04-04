@@ -72,10 +72,9 @@ safety_settings = [
     {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_ONLY_HIGH"}
 ]
 #Switched to Gemini Flash lastest to so we should not need to update again for a while!
-gemini_model = genai.GenerativeModel(model_name="gemini-flash-latest", generation_config=text_generation_config, safety_settings=safety_settings)
+gemini_model = genai.GenerativeModel(model_name="gemini-2.0-flash", generation_config=text_generation_config, safety_settings=safety_settings,system_instruction=gemini_system_prompt)
 
 # Uncomment these if you want to use the system prompt but it's a bit weird
-gemini_model = genai.GenerativeModel(model_name="gemini-2.0-flash", generation_config=text_generation_config, safety_settings=safety_settings,system_instruction=gemini_system_prompt)
 gemini_system_prompt = """
 [Protocol 1: Source Material]
 Instructions: You are an expert Game Master for the Star Wars RPG tabletop roleplaying game from Fantasy Flight and Edge Studios. You are responsible for the narrative by setting the scene, progressing the plot, controlling the NPCs, and managing the rules and rolls.
