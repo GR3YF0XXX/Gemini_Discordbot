@@ -34,7 +34,10 @@ threading.Thread(target=run_on_render, daemon=True).start()
 load_dotenv()
 GOOGLE_AI_KEY = os.getenv("GOOGLE_AI_KEY")
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
-MAX_HISTORY = int(os.getenv("MAX_HISTORY", 10))
+
+# Ensure MAX_HISTORY is an integer
+raw_history = os.getenv("MAX_HISTORY")
+MAX_HISTORY = int(raw_history) if raw_history and raw_history.isdigit() else 10
 
 SUMMERIZE_PROMPT = "Give me 5 bullets about"
 message_history = {}
@@ -85,9 +88,9 @@ Scenes must have purpose and conflict. Maintain a running tally of player invent
 Step-Gate: Process ONE category at a time (Species -> Career -> etc.). Wait for player response before moving to the next step.
 """
 
-# Fixed model name string to resolve the 404 error on the beta/system_instruction endpoint
+# CHANGED: Switched to 'gemini-1.5-flash-latest' to ensure system_instruction compatibility
 gemini_model = genai.GenerativeModel(
-    model_name="models/gemini-1.5-flash", 
+    model_name="gemini-1.5-flash-latest", 
     generation_config=text_generation_config, 
     safety_settings=safety_settings,
     system_instruction=gemini_system_prompt
@@ -106,12 +109,11 @@ async def on_ready():
 
 @bot.event
 async def on_message(message):
+    if message.author == bot.user or message.mention_everyone:
+        return
     asyncio.create_task(process_message(message))
 
 async def process_message(message):
-    if message.author == bot.user or message.mention_everyone:
-        return
-
     if bot.user.mentioned_in(message) or isinstance(message.channel, discord.DMChannel):
         cleaned_text = clean_discord_message(message.content)
         async with message.channel.typing():
@@ -266,8 +268,5 @@ async def process_pdf(pdf_data, prompt):
 
 #---------------------------------------------Run Bot-------------------------------------------------
 bot.run(DISCORD_BOT_TOKEN)
-
-
-
 
 
