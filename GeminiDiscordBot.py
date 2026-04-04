@@ -127,13 +127,16 @@ gemini_config = types.GenerateContentConfig(
     ]
 )
 
-# --- AI Generation Functions (Updated for google-genai) ---
+# --- AI Generation Functions ---
 async def generate_response_with_text(message_text):
     try:
         response = client.models.generate_content(
             model=gemini_model_name,
             contents=message_text,
-            config=gemini_config
+            config=types.GenerateContentConfig(
+                system_instruction=gemini_system_prompt, # FIXED: uses underscore
+                temperature=0.9,
+            )
         )
         return response.text
     except Exception as e:
@@ -146,7 +149,10 @@ async def generate_response_with_image_and_text(image_data, text):
         response = client.models.generate_content(
             model=gemini_model_name,
             contents=[image_part, prompt],
-            config=gemini_config
+            config=types.GenerateContentConfig(
+                system_instruction=gemini_system_prompt, # FIXED: uses underscore
+                temperature=0.9,
+            )
         )
         return response.text
     except Exception as e:
