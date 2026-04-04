@@ -115,5 +115,14 @@ Restriction: Only reference content listed in Protocol 1.
 # --- AI Generation Functions ---
 async def generate_response_with_text(message_text):
     try:
-        # FIXED: uses system_instruction with an underscore
-        response = client.models.generate_content
+        response = client.models.generate_content(
+            model=gemini_model_name,
+            contents=message_text,
+            config=types.GenerateContentConfig(
+                system_instruction=gemini_system_prompt,
+                temperature=0.9,
+            )
+        )
+        return response.text
+    except Exception as e:
+        return "❌ Exception: " + str(e)
