@@ -72,7 +72,7 @@ safety_settings = [
     {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_ONLY_HIGH"}
 ]
 #Switched to Gemini Flash lastest to so we should not need to update again for a while!
-gemini_model = genai.GenerativeModel(model_name="gemini-2.0-flash", generation_config=text_generation_config, safety_settings=safety_settings,system_instruction=gemini_system_prompt)
+gemini_model = genai.GenerativeModel(model_name="gemini-flash-latest", generation_config=text_generation_config, safety_settings=safety_settings)
 
 # Uncomment these if you want to use the system prompt but it's a bit weird
 gemini_system_prompt = """
