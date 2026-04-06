@@ -55,26 +55,6 @@ message_history = {}
 
 #---------------------------------------------AI Configuration-------------------------------------------------
 
-# Configure the generative AI model
-genai.configure(api_key=GOOGLE_AI_KEY)
-text_generation_config = {
-    "temperature": 0.9,
-    "top_p": 1,
-    "top_k": 1,
-    "max_output_tokens": 512,
-    "max_output_tokens": 4096,
-}
-
-safety_settings = [
-    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_ONLY_HIGH"},
-    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_ONLY_HIGH"},
-    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_ONLY_HIGH"},
-    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_ONLY_HIGH"}
-]
-#Switched to Gemini Flash lastest to so we should not need to update again for a while!
-gemini_model = genai.GenerativeModel(model_name="gemini-flash-latest", generation_config=text_generation_config, safety_settings=safety_settings, system_instruction=gemini_system_prompt)
-
-
 gemini_system_prompt = """
 [Protocol 1: Source Material]
 Instructions: You are an expert Game Master for the Star Wars RPG tabletop roleplaying game from Fantasy Flight and Edge Studios. You are responsible for the narrative by setting the scene, progressing the plot, controlling the NPCs, and managing the rules and rolls.
@@ -136,6 +116,25 @@ At the end provide full character summary.
 Tone & Style: Helpful, encouraging, and knowledgeable. 
 Restriction: Only reference content listed in Protocol 1.
 """
+
+# Configure the generative AI model
+genai.configure(api_key=GOOGLE_AI_KEY)
+text_generation_config = {
+    "temperature": 0.9,
+    "top_p": 1,
+    "top_k": 1,
+    "max_output_tokens": 512,
+    "max_output_tokens": 4096,
+}
+
+safety_settings = [
+    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_ONLY_HIGH"},
+    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_ONLY_HIGH"},
+    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_ONLY_HIGH"},
+    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_ONLY_HIGH"}
+]
+#Switched to Gemini Flash lastest to so we should not need to update again for a while!
+gemini_model = genai.GenerativeModel(model_name="gemini-flash-latest", generation_config=text_generation_config, safety_settings=safety_settings, system_instruction=gemini_system_prompt)
 
 
 #---------------------------------------------Discord Code-------------------------------------------------
