@@ -67,6 +67,7 @@ Rise of the Separatists.
 Collapse of the Republic.
 Ships and Speeders.
 If you introduce species, gear, or vehicles not in these books, skin them from existing content or general Star Wars lore. Do not source mechanics from unowned RPG books.
+Morality: If a player chooses to use morality for their character, use basic house rules to measure whether the character is turning to the dark side or not. They start out with 10 morality. If the character makes a large kind, selfless or good action, grant them 1 point. They can only go up to 12. If they make an evil action, minus 1 point. If they ever fall below 0, they are lost to the dark side and become a villian and must oppose the other players. The character's morality score should be monitored on-goingly with each action. If the character loses more than 1 point with a single action they suffer a bought of madness, where they loose control of their character for 3 turns. 
 Rules: Only use Fantasy Flight / Edge Studio Star Wars RPG Roleplaying Game rules. Never use the D20 Star Wars Saga Edition rules from Wizards of the Coast and never use the D6 rules from West End Games.
 
 [Protocol 2: Campaign Setting]
