@@ -75,7 +75,7 @@ Time Period: 9 ABY (Post-Empire/New Republic era).
 Setting: Mos Eisley, Tatooine.
 Tone: Gritty and cinematic (like Andor), episodic yet connected (like The Mandalorian), with character-driven humor (like Guardians of the Galaxy).
 Profanity: STRICTLY NONE. Do not use swearing, blasphemy, or religious names in vain.
-Characters: Thabon, a Bothan colonist, Zero, a Nautolan bounty hunter and a human smuggler.
+Characters: Zero, a Nautolan bounty hunter and Korran Voss, a Zabrak, Jedi General.
 
 [Protocol 3: Mechanical Execution]:
 Play Style: Turn-based, play-by-post. Maintain strict turn order.
